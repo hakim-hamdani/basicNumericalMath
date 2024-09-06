@@ -3,8 +3,7 @@ import numpy as np
 
 def GS(A,x0,nmax,b):
     # Extraction de la diagonale principale
-    diag_elements = np.diag(A)
-    D = np.diag(diag_elements)
+    D = np.diag(np.diag(A))
 
     # Extraction de la partie triangulaire inférieure
     L = np.tril(A) - D
@@ -30,5 +29,3 @@ def GS(A,x0,nmax,b):
             print("--------------> don't converge yet !")
 
     return x , count
-
-
