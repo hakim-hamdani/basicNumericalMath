@@ -19,8 +19,8 @@ def GS(A,x0,nmax,b):
     while count < nmax:
         x = np.dot(np.linalg.inv( D + L ) , b - np.dot(U,x_old) )
 
-        if np.max(np.abs(x-x_old)) < 1.0e-8:
-            print("--------------> Yep converge")
+        if np.max(np.abs(x-x_old)) < 1.0e-6:
+            print("--------------> Yep converge", f' | {count} iterations')
             break
         x_old=x
         count+=1
