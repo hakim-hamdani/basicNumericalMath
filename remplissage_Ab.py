@@ -5,7 +5,9 @@ import numpy as np
 # if newmann qb=10 in west side: aw=0 and b+=dAy*qb 
 
 
-def build_matrix_A(m, n , init):
+def build_matrix_A(n, m , init):
+
+    pb2D=type_problem(n,m,init)
 
     Areaf=init['dX']*init['dZ']
     af=init['kf']*Areaf/init['dxf']
@@ -30,8 +32,14 @@ def build_matrix_A(m, n , init):
             i = row * n + col
 
             flag = flag_BC( BC_type([n,m],row,col,init) )
-            print(row,col,flag,BC_type([n,m],row,col,init),(4 - flag[0] - flag[2] ))
-            ap=(4 - flag[0] - flag[2] )*af + flag[0]*ab + flag[2]*ab - Sp*dV
+
+            # print(row,col,flag,BC_type([n,m],row,col,init),(4 - flag[0] - flag[2] ))
+            
+            if pb2D==1.:
+                ap=(4 - flag[0] - flag[2] )*af + flag[0]*ab + flag[2]*ab - Sp*dV
+            else:  
+                ap=(2 - flag[0])*af + flag[0]*ab - Sp*dV
+            
             # Mettre ap sur la diagonale
             A[i, i] = ap
 
@@ -53,7 +61,10 @@ def build_matrix_A(m, n , init):
 
     return A
 
-def build_vector_b(m, n , init):
+def build_vector_b(n, m , init):
+
+    pb2D=type_problem(n,m,init)
+
     # Nombre total d'éléments
     N = m * n
     
@@ -86,17 +97,17 @@ def build_vector_b(m, n , init):
 
             # ----------------cell in the corner
             if ( col == 0 and row == 0 ):
-                b[i] += flag[0]*ab*init['T_left'] + flag[2]*ab*init['T_top'] + \
-                        flag[1]*dAy*init['Q_left'] + flag[3]*dAx*init['Q_top'] 
+                b[i] += flag[0]*ab*init['T_left'] + pb2D*flag[2]*ab*init['T_top'] + \
+                        flag[1]*dAy*init['Q_left'] + pb2D*flag[3]*dAx*init['Q_top'] 
             elif (col == n-1 and row == 0):
-                b[i] += flag[0]*ab*init['T_right'] + flag[2]*ab*init['T_top'] + \
-                        flag[1]*dAy*init['Q_right'] + flag[3]*dAx*init['Q_top'] 
+                b[i] += flag[0]*ab*init['T_right'] + pb2D*flag[2]*ab*init['T_top'] + \
+                        flag[1]*dAy*init['Q_right'] + pb2D*flag[3]*dAx*init['Q_top'] 
             elif (col == 0 and row == m-1):
-                b[i] += flag[0]*ab*init['T_left'] + flag[2]*ab*init['T_bottom'] + \
-                        flag[1]*dAy*init['Q_left'] + flag[3]*dAx*init['Q_bottom'] 
+                b[i] += flag[0]*ab*init['T_left'] + pb2D*flag[2]*ab*init['T_bottom'] + \
+                        flag[1]*dAy*init['Q_left'] + pb2D*flag[3]*dAx*init['Q_bottom'] 
             elif (col == n-1 and row == m-1):
-                b[i] += flag[0]*ab*init['T_right'] + flag[2]*ab*init['T_bottom'] + \
-                        flag[1]*dAy*init['Q_right'] + flag[3]*dAx*init['Q_bottom']   
+                b[i] += flag[0]*ab*init['T_right'] + pb2D*flag[2]*ab*init['T_bottom'] + \
+                        flag[1]*dAy*init['Q_right'] + pb2D*flag[3]*dAx*init['Q_bottom']   
             
             # -----------------cell in the boundary
             elif col == 0: 
@@ -104,9 +115,9 @@ def build_vector_b(m, n , init):
             elif col == n-1:  
                 b[i] += flag[0]*ab*init['T_right'] + flag[1]*dAy*init['Q_right'] 
             elif row == 0 :
-                b[i] += flag[2]*ab*init['T_top'] + flag[3]*dAy*init['Q_top'] 
+                b[i] += pb2D*flag[2]*ab*init['T_top'] + pb2D*flag[3]*dAy*init['Q_top'] 
             elif row == m-1: 
-                b[i] += flag[2]*ab*init['T_bottom'] + flag[3]*dAy*init['Q_bottom'] 
+                b[i] += pb2D*flag[2]*ab*init['T_bottom'] + pb2D*flag[3]*dAy*init['Q_bottom'] 
 
 
     return b
@@ -114,18 +125,18 @@ def build_vector_b(m, n , init):
 
 def flag_BC(boundary):
 
-    flag=[0,0,0,0] # [Diric1 , Newman1, Diric2 , Newman2]
+    flag=[0.,0.,0.,0.] # [Diric1 , Newman1, Diric2 , Newman2]
     # flag[0] et flag[1] for x-j-direction west or east  | left or right
     # flag[1] et flag[2] for y-i-direction north or south  | top or bottom
 
     if boundary[0]=='Dirichlet':
-        flag[0]=1
+        flag[0]=1.
     elif boundary[0]=='Newmann':
-        flag[1]=1
+        flag[1]=1.
     if boundary[1]=='Dirichlet':
-        flag[2]=1
+        flag[2]=1.
     elif boundary[1]=='Newmann':
-        flag[3]=1
+        flag[3]=1.
 
     return flag
 
@@ -171,3 +182,18 @@ def BC_type(domain_size,row,col,init):
 
             
             return BC
+
+
+def type_problem(n,m,init):
+    """
+    Type de probleme 1D ou 2D : booleen
+    """
+    pb2D=0.
+
+    if (m > 1) or (init['1D_prob']==False):
+       pb2D=1.
+    if (init['1D_prob']==True) or (m==1):
+        m=1
+        pb2D=0.
+
+    return pb2D
