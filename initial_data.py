@@ -6,24 +6,23 @@ def intial_data():
     """
     parametres = {
         'kf': 1.,
-        'Afx': 1.,
-        'Afy': 1.,
         'dxf': 1.,
         'dX': 1.,
         'dY': 1.,
+        'dZ': 1.,
         'Sc': 0.,
         'Sp': 0.,
-        'Tbw': 100.,
-        'Tbe': 100.,
-        'Tbn': 200.,
-        'Tbs': 80.,
-        'Qbw': 0.,
-        'Qbe': 0.,
-        'Qbn': 0.,
-        'Qbs': 0.,
-        'BC_T_Imin': 'Dirichlet',
-        'BC_T_Imax': 'Newmann',
-        'BC_T_Jmin': 'Dirichlet',
-        'BC_T_Jmin': 'Dirichlet'
+        'T_top'   : 400.,
+        'T_bottom': 300.,
+        'T_left'  : 100.,
+        'T_right' : 200.,
+        'Q_top'   : 0.,   # top-north
+        'Q_bottom': 0.,   # bottom-south
+        'Q_left'  : 0.,   # left-west
+        'Q_right' : 0.,   # right-esast
+        'BC_T_top'   : 'Dirichlet',
+        'BC_T_bottom': 'Dirichlet',
+        'BC_T_left'  : 'Dirichlet',
+        'BC_T_right' : 'Dirichlet'
     }
     return parametres

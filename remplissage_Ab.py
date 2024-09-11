@@ -7,9 +7,9 @@ import numpy as np
 
 def build_matrix_A(m, n , init):
 
-
-    af=init['kf']*init['Af']*init['dxf']
-    ab=2*af
+    Areaf=init['dX']*init['dZ']
+    af=init['kf']*Areaf/init['dxf']
+    ab=2*af # pour un maillage structuré et dx_bord = dxf/2 
 
     # source therme S = Sc + SpTp
     Sp=init['Sp']
@@ -21,7 +21,7 @@ def build_matrix_A(m, n , init):
     A = np.zeros((N, N))
 
     #cell volume in 2D
-    dV=init['dY']*init['dX']*1.0
+    dV=init['dY']*init['dX']*init['dZ']
 
 
     for row in range(m):
@@ -29,14 +29,9 @@ def build_matrix_A(m, n , init):
             # Calculer l'indice linéaire de l'élément
             i = row * n + col
 
-            # Déterminer le coefficient ap selon la position (coin, bordure, centre)
-            if (row == 0 or row == m-1) and (col == 0 or col == n-1):
-                ap = af +af + ab + ab - Sp*dV   # Coin
-            elif row == 0 or row == m-1 or col == 0 or col == n-1:
-                ap = 3*af + ab  - Sp*dV # Bordure
-            else:
-                ap = 4*af  - Sp*dV # Centre
-
+            flag = flag_BC( BC_type([n,m],row,col,init) )
+            print(row,col,flag,BC_type([n,m],row,col,init),(4 - flag[0] - flag[2] ))
+            ap=(4 - flag[0] - flag[2] )*af + flag[0]*ab + flag[2]*ab - Sp*dV
             # Mettre ap sur la diagonale
             A[i, i] = ap
 
@@ -66,12 +61,13 @@ def build_vector_b(m, n , init):
     Sc=init['Sc']
 
     #cell volume in 2D
-    dV=init['dY']*init['dX']*1.0
+    dV=init['dY']*init['dX']*init['dZ']
 
     # Initialisation de la matrice A de taille N x N
     b = Sc*dV*np.ones((N))
 
-    af=init['kf']*init['Af']*init['dxf']
+    Areaf=init['dX']*init['dZ']
+    af=init['kf']*Areaf/init['dxf']
     ab=2*af
 
 
@@ -81,24 +77,97 @@ def build_vector_b(m, n , init):
             # Calculer l'indice linéaire de l'élément
             i = row * n + col
 
+            flag = flag_BC( BC_type([n,m],row,col,init) )
+
+
+            dAy=init['dZ']*init['dX'] # dAy = dX*dZ avec dZ=1. for 2D case
+            dAx=init['dZ']*init['dY'] 
+            dAz=init['dX']*init['dY'] 
+
+            # ----------------cell in the corner
+            if ( col == 0 and row == 0 ):
+                b[i] += flag[0]*ab*init['T_left'] + flag[2]*ab*init['T_top'] + \
+                        flag[1]*dAy*init['Q_left'] + flag[3]*dAx*init['Q_top'] 
+            elif (col == n-1 and row == 0):
+                b[i] += flag[0]*ab*init['T_right'] + flag[2]*ab*init['T_top'] + \
+                        flag[1]*dAy*init['Q_right'] + flag[3]*dAx*init['Q_top'] 
+            elif (col == 0 and row == m-1):
+                b[i] += flag[0]*ab*init['T_left'] + flag[2]*ab*init['T_bottom'] + \
+                        flag[1]*dAy*init['Q_left'] + flag[3]*dAx*init['Q_bottom'] 
+            elif (col == n-1 and row == m-1):
+                b[i] += flag[0]*ab*init['T_right'] + flag[2]*ab*init['T_bottom'] + \
+                        flag[1]*dAy*init['Q_right'] + flag[3]*dAx*init['Q_bottom']   
             
-            if (row == 0 and col == 0):
-                b[i] += ab*init['Tbw'] + ab*init['Tbn']    # Coin
-            elif (row == 0 and col == n-1):
-                b[i] +=  ab*init['Tbe'] + ab*init['Tbn']   # Coin
-            elif (row == m-1 and col == 0):
-                b[i] += ab*init['Tbw'] + ab*init['Tbs']    # Coin
-            elif (row == m-1 and col == n-1):
-                b[i] += ab*init['Tbe'] + ab*init['Tbs']    # Coin
-            elif row == 0 :
-                b[i] += ab*init['Tbn']  # Bordure
-            elif row == m-1: 
-                b[i] += ab*init['Tbs']  # Bordure
+            # -----------------cell in the boundary
             elif col == 0: 
-                b[i] += ab*init['Tbw']  # Bordure
+                b[i] += flag[0]*ab*init['T_left'] + flag[1]*dAy*init['Q_left'] 
             elif col == n-1:  
-                b[i] += ab*init['Tbe']  # Bordure
+                b[i] += flag[0]*ab*init['T_right'] + flag[1]*dAy*init['Q_right'] 
+            elif row == 0 :
+                b[i] += flag[2]*ab*init['T_top'] + flag[3]*dAy*init['Q_top'] 
+            elif row == m-1: 
+                b[i] += flag[2]*ab*init['T_bottom'] + flag[3]*dAy*init['Q_bottom'] 
+
 
     return b
 
 
+def flag_BC(boundary):
+
+    flag=[0,0,0,0] # [Diric1 , Newman1, Diric2 , Newman2]
+    # flag[0] et flag[1] for x-j-direction west or east  | left or right
+    # flag[1] et flag[2] for y-i-direction north or south  | top or bottom
+
+    if boundary[0]=='Dirichlet':
+        flag[0]=1
+    elif boundary[0]=='Newmann':
+        flag[1]=1
+    if boundary[1]=='Dirichlet':
+        flag[2]=1
+    elif boundary[1]=='Newmann':
+        flag[3]=1
+
+    return flag
+
+
+def BC_type(domain_size,row,col,init):
+            """
+            x-directoon : j direction in python (colonnes-columns)
+            y-directoon : i direction in python (lignes-raws)
+            Boundary Conditions:
+                i=0   : top-north
+                i=m-1 : bottom-south
+                j=0   : left-west
+                j=n-1 : right-east
+            """
+            n=domain_size[0]
+            m=domain_size[1]
+
+            BC=['','']
+            
+            # cell in the corner :2sides
+            if (col == 0 and row == 0): # Coin
+                 BC[0]=init['BC_T_left'] 
+                 BC[1]=init['BC_T_top'] 
+            elif (col == n-1 and row == 0):
+                 BC[0]=init['BC_T_right'] 
+                 BC[1]=init['BC_T_top']  
+            elif (col == 0 and row == m-1):
+                 BC[0]=init['BC_T_left']
+                 BC[1]=init['BC_T_bottom']
+            elif (col == n-1 and row == m-1):
+                 BC[0]=init['BC_T_right']
+                 BC[1]=init['BC_T_bottom']
+            
+            # cell in the boundary : 1side
+            elif col == 0: 
+                BC[0]=init['BC_T_left'] 
+            elif col == n-1:  
+                BC[0]=init['BC_T_right'] 
+            elif row == 0 :
+                BC[1]=init['BC_T_top'] 
+            elif row == m-1: 
+                BC[1]=init['BC_T_bottom'] 
+
+            
+            return BC

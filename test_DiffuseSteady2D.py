@@ -6,13 +6,14 @@ import matplotlib.pyplot as plt
 
 init=intial_data()
 
-m=15
-n=15
+m=4
+n=4
 
 
 A= build_matrix_A(m,n,init)
+print(A)
 b= build_vector_b(m,n,init)
-Tmean=(init['Tbe']+init['Tbw']+init['Tbs']+init['Tbn'])/4.0
+Tmean=(init['T_top']+init['T_bottom']+init['T_right']+init['T_left'])/4.0
 x0=Tmean*np.ones_like(b)#*Tmean
 
 start_time = time.time()  # Commence le chronométrage
@@ -21,7 +22,7 @@ end_time = time.time()  # Termine le chronométrage
 execution_time = end_time - start_time
 print(f"Temps d'exécution : {execution_time} secondes")
 
-# print('num solution -->:\n', solution[0])
+print('num solution -->:\n', solution[0])
 # print('numpy solution-----> :\n', np.linalg.solve(A, b))
 
 # Transformation en 2D
